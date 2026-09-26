@@ -24,13 +24,17 @@ function fmtDistance(
   au: number | null
 ) {
   if (au != null) return `${au.toFixed(2)} AU`;
-  if (km != null) return `${Math.round(km).toLocaleString()} km`;
+  if (km != null)
+    return `${Math.round(km).toLocaleString()} km`;
   return "—";
 }
 
-function conditionForSun(sunAltitude: number) {
+function conditionForSun(
+  sunAltitude: number
+) {
   if (sunAltitude > 6) return "Daylight";
-  if (sunAltitude > -6) return "Civil twilight";
+  if (sunAltitude > -6)
+    return "Civil twilight";
   if (sunAltitude > -18) return "Twilight";
   return "Dark sky";
 }
@@ -71,11 +75,11 @@ function formatTime(
 }
 
 export default function SkyExplorer() {
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] =
+    useState(false);
 
-  const [mode, setMode] = useState<
-    "sky" | "solar"
-  >("sky");
+  const [mode, setMode] =
+    useState<"sky" | "solar">("sky");
 
   const [location, setLocation] =
     useState<ObserverLocation | null>(null);
@@ -101,24 +105,9 @@ export default function SkyExplorer() {
   const [orientation, setOrientation] =
     useState<DeviceHeading | null>(null);
 
-  /**
-   * IMPORTANT:
-   * Don't initialize this with Date.now().
-   *
-   * During SSR, Date.now() runs on the server.
-   * During hydration, Date.now() runs again in the browser.
-   * They can differ and produce different HTML.
-   *
-   * We start with a deterministic value and set
-   * the real current time after hydration.
-   */
   const [simulationMs, setSimulationMs] =
     useState(0);
 
-  /**
-   * Stable "now" value used during rendering.
-   * This avoids calling Date.now() directly in JSX.
-   */
   const [nowMs, setNowMs] =
     useState(0);
 
@@ -156,12 +145,6 @@ export default function SkyExplorer() {
   const streamRef =
     useRef<MediaStream | null>(null);
 
-  /**
-   * Client-only initialization.
-   *
-   * This runs AFTER hydration, so browser time and
-   * browser locale can safely be used.
-   */
   useEffect(() => {
     const current = Date.now();
 
@@ -171,7 +154,9 @@ export default function SkyExplorer() {
   }, []);
 
   /**
-   * Sensor subscription.
+   * Keep the sensor subscription alive.
+   * This is also useful for other UI that may
+   * eventually display heading/calibration state.
    */
   useEffect(() => {
     const cleanup =
@@ -182,9 +167,6 @@ export default function SkyExplorer() {
     return cleanup;
   }, []);
 
-  /**
-   * Stop camera when component unmounts.
-   */
   useEffect(() => {
     return () => {
       streamRef.current
@@ -193,12 +175,6 @@ export default function SkyExplorer() {
     };
   }, []);
 
-  /**
-   * Keep "now" current while the app is open.
-   *
-   * This is intentionally an effect, not Date.now()
-   * inside JSX.
-   */
   useEffect(() => {
     if (!mounted) return;
 
@@ -266,7 +242,9 @@ export default function SkyExplorer() {
 
       streamRef.current
         ?.getTracks()
-        .forEach((track) => track.stop());
+        .forEach((track) =>
+          track.stop()
+        );
 
       streamRef.current =
         await navigator.mediaDevices.getUserMedia(
@@ -323,6 +301,45 @@ export default function SkyExplorer() {
     setSensorStatus(state);
 
     await requestCamera();
+  }
+
+  /**
+   * Start the sky-map experience WITHOUT camera.
+   *
+   * Location tells astronomy-engine where
+   * the observer is.
+   *
+   * Motion/orientation tells SkyCanvas which
+   * direction the physical phone is pointing.
+   *
+   * Camera is intentionally not requested.
+   */
+  async function startWithoutCamera() {
+    const located = location
+      ? true
+      : await requestLocation();
+
+    if (!located && !location) {
+      return;
+    }
+
+    const sensorState =
+      await requestSensorPermission();
+
+    setSensorStatus(sensorState);
+
+    // Explicitly keep camera disabled.
+    if (streamRef.current) {
+      streamRef.current
+        .getTracks()
+        .forEach((track) =>
+          track.stop()
+        );
+
+      streamRef.current = null;
+    }
+
+    setCameraActive(false);
   }
 
   const calculatedBodies = location
@@ -415,12 +432,6 @@ export default function SkyExplorer() {
         )
       : null;
 
-  /**
-   * Timeline offset from the stable "nowMs".
-   *
-   * When the app has just hydrated, nowMs is the
-   * actual browser time. During SSR it is 0.
-   */
   const timelineMinutes =
     nowMs > 0
       ? Math.round(
@@ -429,10 +440,6 @@ export default function SkyExplorer() {
         )
       : 0;
 
-  /**
-   * Updating "NOW" happens only from a user action,
-   * so Date.now() here is perfectly safe.
-   */
   function jumpToNow() {
     const current = Date.now();
 
@@ -663,7 +670,6 @@ export default function SkyExplorer() {
                             80
                         : 80
                     ),
-
                     top: Math.min(
                       Math.max(
                         tracking.y,
@@ -851,6 +857,9 @@ export default function SkyExplorer() {
                             track.stop()
                         );
 
+                      streamRef.current =
+                        null;
+
                       setCameraActive(
                         false
                       );
@@ -978,13 +987,10 @@ export default function SkyExplorer() {
                   value={
                     timelineMinutes
                   }
-                  onChange={(
-                    event
-                  ) =>
+                  onChange={(event) =>
                     setTimelineOffset(
                       Number(
-                        event.target
-                          .value
+                        event.target.value
                       )
                     )
                   }
@@ -1012,11 +1018,9 @@ export default function SkyExplorer() {
                 <option value="real">
                   Real scale
                 </option>
-
                 <option value="explore">
                   Exploration scale
                 </option>
-
                 <option value="educational">
                   Educational scale
                 </option>
@@ -1175,7 +1179,7 @@ export default function SkyExplorer() {
             <button
               style={{ marginTop: 7 }}
               onClick={
-                requestLocation
+                startWithoutCamera
               }
             >
               Continue without camera
@@ -1190,8 +1194,8 @@ export default function SkyExplorer() {
               Camera is optional.
               Without it, the sky
               remains interactive
-              as a sensor-driven
-              map.
+              and follows your
+              phone's movement.
             </p>
           </section>
         )}
