@@ -1,0 +1,10 @@
+{
+  "name": "Sky Explorer",
+  "short_name": "Sky Explorer",
+  "description": "Point your phone at the real sky. Discover and explore the universe.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05070d",
+  "theme_color": "#05070d",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
